@@ -197,8 +197,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     function changeRoomBookingDetailIntentHandler(){
         if(isEmpty(agent.parameters.destination)){
             agent.add('Please provide destination for room booking.');
-            `locationLSuggestions`.forEach(location => agent.add(new Suggestion(location)));
-        }else if(isEmpty(agent.parameters.date)){
+            addDestinationSuggestionForRoomBooking();
+        }else if(isEmpty(agent.parameters.travelDate)){
             agent.add('For when do you want to book the room?');
             agent.add(new Suggestion('Today'));
             agent.add(new Suggestion('Tomorrow'));
@@ -217,7 +217,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
             ['Taj', 'Oberoi', 'Hilton'].forEach(hotel => agent.add(new Suggestion(hotel)));
         }else{
             // the end
-            agent.add(`hotel booked for destination for date`);
+            let context = getOutputContext("travelintent-followup");
+            agent.add(`hotel booked for ${context.parameters.destination.city} for ${context.parameters.travelDate}`);
         }
     }
 
@@ -225,6 +226,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
 
     function askForOrigin() {
+        
         agent.add('What is the origin of train? \n Quick suggestions:  \n');
         locationLSuggestions.forEach(origin => agent.add(new Suggestion(origin)))
     }
@@ -239,6 +241,18 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
             }
         })
 
+        destinationList.forEach(destination => agent.add(new Suggestion(destination)));
+    }
+
+    
+
+    function addDestinationSuggestionForRoomBooking(){
+        let context = getOutputContext("travelintent-followup");
+        let destinationList = locationLSuggestions.filter(destination => {
+            if (context.destination.city != destination) {
+                return destination;
+            }
+        })
         destinationList.forEach(destination => agent.add(new Suggestion(destination)));
     }
 
