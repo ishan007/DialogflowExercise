@@ -3,7 +3,7 @@
 const functions = require('firebase-functions');
 const { WebhookClient, Suggestion } = require('dialogflow-fulfillment');
 
-let locationLSuggestions = ['Mumbai', 'Chandigarh', 'Bangalore', 'Goa'];
+let locationLSuggestions = ['Mumbai', 'Chandigarh', 'Bengaluru', 'Surat'];
 let dateSuggestions = ['Today', 'Tomorrow', '3 days after today', 'Enter date'];
 
 
@@ -82,19 +82,19 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
     // Do not select seat intent handler
     function doNotSelectSeatIntentHandler() {
-        agent.setFollowupEvent('start_payment');
+        agent.setFollowupEvent('do_payment');
     }
 
 
 
     // Confirm seat intent handler
     function confirmSeatIntentHandler(){
-        let travelDateContext = getOutputContext("traveldate-followup");
+        let travelDateContext = agent.getContext("traveldate-followup");
         if (isEmpty(agent.parameters.seatNumber)) {
             agent.add(`Please select your seat for your train from ${travelDateContext.parameters.origin.city} to ${travelDateContext.parameters.destination.city} for ${travelDateContext.parameters.class}.`);
             agent.add("A| 1 2 3 4 5 6 \n B| 1 2 3 4 5 6 \n C| 1 2 3 4 5 6");
         } else {
-            agent.setFollowupEvent('start_payment');
+            agent.setFollowupEvent('do_payment');
         }
     }
 
@@ -110,7 +110,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
                 agent.setFollowupEvent('start_over');
                 break;
             case 'Change destination':
-                let origin = 'Patna'
+                let origin = agent.getContext('travelintent-followup').parameters.origin.city;
                 agent.setFollowupEvent({
                     name: 'change_destination',
                     parameters: {
@@ -169,7 +169,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
             agent.setFollowupEvent('change_room_destination');
         }else{
             // ask for destination confirmation
-            let context = getOutputContext("travelintent-followup");
+            let context = agent.getContext("travelintent-followup");
             agent.add(`Do you want to book room for  ${context.parameters.destination.city}?`);
             agent.add(new Suggestion('Yes'));
             agent.add(new Suggestion('No'));
@@ -197,7 +197,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     function changeRoomBookingDetailIntentHandler(){
         if(isEmpty(agent.parameters.destination)){
             agent.add('Please provide destination for room booking.');
-            addDestinationSuggestionForRoomBooking();
+            destinationList.forEach(destination => agent.add(new Suggestion(destination)));
         }else if(isEmpty(agent.parameters.travelDate)){
             agent.add('For when do you want to book the room?');
             agent.add(new Suggestion('Today'));
@@ -217,8 +217,9 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
             ['Taj', 'Oberoi', 'Hilton'].forEach(hotel => agent.add(new Suggestion(hotel)));
         }else{
             // the end
-            let context = getOutputContext("travelintent-followup");
-            agent.add(`hotel booked for ${context.parameters.destination.city} for ${context.parameters.travelDate}`);
+            let context = agent.getContext("travelintent-followup");
+            let date = getFormatedDate(context.parameters.travelDate);
+            agent.add(`hotel booked for ${context.parameters.destination.city} for ${date}`);
         }
     }
 
@@ -226,7 +227,6 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
 
     function askForOrigin() {
-        
         agent.add('What is the origin of train? \n Quick suggestions:  \n');
         locationLSuggestions.forEach(origin => agent.add(new Suggestion(origin)))
     }
@@ -235,24 +235,19 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
     function askForDestination() {
         agent.add('What is the destination of train? \n Quick suggestions:  \n');
+        let context = agent.getContext('travelintent-followup');
+        let origin;
+        if(isEmpty(context)){
+            origin = agent.parameters.origin.city;
+        }else{
+            origin = context.parameters.origin;
+        }
         let destinationList = locationLSuggestions.filter(destination => {
-            if (agent.parameters.origin.city != destination) {
+            if (origin != destination) {
                 return destination;
             }
         })
 
-        destinationList.forEach(destination => agent.add(new Suggestion(destination)));
-    }
-
-    
-
-    function addDestinationSuggestionForRoomBooking(){
-        let context = getOutputContext("travelintent-followup");
-        let destinationList = locationLSuggestions.filter(destination => {
-            if (context.destination.city != destination) {
-                return destination;
-            }
-        })
         destinationList.forEach(destination => agent.add(new Suggestion(destination)));
     }
 
@@ -267,13 +262,9 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     }
 
 
-
-    function getOutputContext(name) {
-        return agent.contexts.find(
-            context => context.name.endsWith(name)
-        );
+    function getFormatedDate(date){
+        return new Date(date).toLocaleDateString()
     }
-
 
 
 
@@ -285,6 +276,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
     let intentMap = new Map();
     intentMap.set('Default Welcome Intent', welcome);
+    intentMap.set('Start Over', welcome);
     intentMap.set('Default Fallback Intent', fallback);
     intentMap.set('Travel Intent', travelIntentHandler);
     intentMap.set('Travel Date', travelDateIntentHandler);
