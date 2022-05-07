@@ -300,3 +300,4 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
 
 // defult url - https://us-central1-nagp-demo-travel-planner-hiuc.cloudfunctions.net/dialogflowFirebaseFulfillment
+// ngrok url - https://d200-2401-4900-1f3a-714-11a6-fc00-a7e0-1c11.in.ngrok.io/nagp-demo-travel-planner-hiuc/us-central1/dialogflowFirebaseFulfillment
