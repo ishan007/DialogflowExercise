@@ -91,8 +91,12 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     // Confirm seat intent handler
     function confirmSeatIntentHandler() {
         let travelDateContext = agent.getContext("traveldate-followup");
+        let origin = travelDateContext.parameters.origin.city;
+        if(isEmpty(origin)){
+            origin = travelDateContext.parameters.origin
+        }
         if (isEmpty(agent.parameters.seatNumber)) {
-            agent.add(`Please select your seat for your train from ${travelDateContext.parameters.origin.city} to ${travelDateContext.parameters.destination.city} for ${travelDateContext.parameters.class}.`);
+            agent.add(`Please select your seat for your train from ${origin} to ${travelDateContext.parameters.destination.city} for ${travelDateContext.parameters.class}.`);
             agent.add("A| 1 2 3 4 5 6 \n B| 1 2 3 4 5 6 \n C| 1 2 3 4 5 6");
         } else {
             agent.setFollowupEvent('do_payment');
