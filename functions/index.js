@@ -4,7 +4,7 @@ const functions = require('firebase-functions');
 const { WebhookClient, Suggestion } = require('dialogflow-fulfillment');
 const fetch = require('node-fetch');
 
-let locationLSuggestions = ['Mumbai', 'Chandigarh', 'Bengaluru'];
+let locationSuggestions = ['Mumbai', 'Chandigarh', 'Bengaluru'];
 let dateSuggestions = ['Today', 'Tomorrow', '3 days after today', 'Enter date'];
 
 
@@ -202,7 +202,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     function changeRoomBookingDetailIntentHandler() {
         if (isEmpty(agent.parameters.destination)) {
             agent.add('Please provide destination for room booking.');
-            destinationList.forEach(destination => agent.add(new Suggestion(destination)));
+            locationSuggestions.forEach(destination => agent.add(new Suggestion(destination)));
         } else if (isEmpty(agent.parameters.travelDate)) {
             agent.add('For when do you want to book the room?');
             agent.add(new Suggestion('Today'));
@@ -231,6 +231,29 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
 
 
+    // Book a room intent handler
+    function bookARoomIntentHandler(){
+        if (isEmpty(agent.parameters.destination)) {
+            agent.add('Please provide destination for room booking.');
+            locationSuggestions.forEach(destination => agent.add(new Suggestion(destination)));
+        } else if (isEmpty(agent.parameters.date)) {
+            agent.add('For when do you want to book the room?');
+            dateSuggestions.forEach(date => agent.add(new Suggestion(date)));
+        } else if (isEmpty(agent.parameters.hotelName)) {
+            // ask for hotel name
+            agent.add('Please select hotel from below available hotels.');
+            ['Taj', 'Oberoi', 'Hilton'].forEach(hotel => agent.add(new Suggestion(hotel)));
+        } else {
+            // the end
+            let date = getFormatedDate(agent.parameters.date);
+            agent.add(`hotel booked for ${agent.parameters.destination.city} for ${date}`);
+        }
+    }
+
+
+
+
+
     function askForOrigin() {
         return fetch("https://ipinfo.io/json").then(
             (response) => response.json()
@@ -238,7 +261,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
             (json) => {
                 agent.add('What is the origin of train? \n Quick suggestions:  \n');
                 agent.add(new Suggestion(json.city))
-                locationLSuggestions.forEach(origin => agent.add(new Suggestion(origin)))
+                locationSuggestions.forEach(origin => agent.add(new Suggestion(origin)))
             }
         )
     }
@@ -254,7 +277,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
         } else {
             origin = context.parameters.origin;
         }
-        let destinationList = locationLSuggestions.filter(destination => {
+        let destinationList = locationSuggestions.filter(destination => {
             if (origin != destination) {
                 return destination;
             }
@@ -305,6 +328,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     intentMap.set('Destination Confirmed - yes', doNotchangeRoomDestinationIntentHandler);
     intentMap.set('Room Booking Detail', changeRoomBookingDetailIntentHandler);
     intentMap.set('Hotel Detail', confirmHotelIntentHandler);
+    intentMap.set('Book A Room', bookARoomIntentHandler);
 
     agent.handleRequest(intentMap);
 });
